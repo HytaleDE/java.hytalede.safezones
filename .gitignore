@@ -1,0 +1,14 @@
+target/
+bin/
+build/
+out/
+.idea/
+*.iml
+*.log
+config/*.local.json
+lib/*.jar
+agent-tools/
+src/test/
+# Local-only helper scripts (do not commit)
+install-to-hytale.ps1
+install-to-hytale.cmd

@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>de.hytalede</groupId>
+  <artifactId>safezones</artifactId>
+  <version>0.7.3</version>
+  <name>HytaleDE SafeZones Plugin</name>
+  <description>Chunk-based safe zones / region protection (Hytale server plugin adapter).</description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>25</maven.compiler.release>
+    <hytale.server.version>2026.02.17-255364b8e</hytale.server.version>
+    <junit.version>5.10.2</junit.version>
+    <jackson.version>2.17.2</jackson.version>
+    <fastutil.version>8.5.18</fastutil.version>
+    <!-- Used for unique, hot-reload-friendly jar names. -->
+    <maven.build.timestamp.format>yyyyMMdd-HHmmss</maven.build.timestamp.format>
+    <!-- Override via -DbuildId=... if desired -->
+    <buildId>${maven.build.timestamp}</buildId>
+  </properties>
+
+  <dependencies>
+    <!--
+      Hytale server API.
+      We compile against the local server jar at ../@HytaleServer/HytaleServer.jar so updates are just "drop in new jar".
+      (Maven 'system' scope is intentionally used here to avoid stale ~/.m2 SNAPSHOTs.)
+    -->
+    <dependency>
+      <groupId>com.hypixel.hytale</groupId>
+      <artifactId>HytaleServer-parent</artifactId>
+      <version>${hytale.server.version}</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/../@HytaleServer/HytaleServer.jar</systemPath>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+
+    <!-- Needed for Hytale world map generator APIs (LongSet/LongIterator). Provided by server runtime. -->
+    <dependency>
+      <groupId>it.unimi.dsi</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>${fastutil.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <!-- Default: clean semver filename -->
+    <finalName>hytalede-safezones-${project.version}</finalName>
+    <resources>
+      <!-- Only the plugin manifest is filtered (version sync). -->
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>manifest.json</include>
+        </includes>
+      </resource>
+      <!-- Everything else is copied as-is. -->
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>manifest.json</exclude>
+        </excludes>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.3.1</version>
+        <configuration>
+          <useModulePath>false</useModulePath>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.2</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>de.hytalede.safezones.Main</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+
+      <!-- Bundle runtime dependencies (the Hytale server does NOT provide Jackson). -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <!-- Replace the main artifact with the shaded one -->
+              <shadedArtifactAttached>false</shadedArtifactAttached>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <!-- Ensure a stable, expected output filename for server deployment -->
+              <outputFile>${project.build.directory}/${project.build.finalName}.jar</outputFile>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <transformers>
+                <!-- Keep an informational build stamp inside the jar (does NOT affect semver). -->
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <manifestEntries>
+                    <Implementation-Title>HytaleDE SafeZones</Implementation-Title>
+                    <Implementation-Version>${project.version}</Implementation-Version>
+                    <Build-Id>${buildId}</Build-Id>
+                    <Build-Time>${maven.build.timestamp}</Build-Time>
+                  </manifestEntries>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.8.0</version>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <failOnError>false</failOnError>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- Optional: produce a unique jar filename for hot-reload/deploy workflows. -->
+    <profile>
+      <id>unique-jar</id>
+      <build>
+        <finalName>hytalede-safezones-${project.version}-${buildId}</finalName>
+      </build>
+    </profile>
+  </profiles>
+</project>

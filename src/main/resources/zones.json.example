@@ -1,0 +1,32 @@
+{
+  "_comment": "SafeZones zones example. Zones are rectangles in chunk coordinates (x/z). chunkOverrides is a map keyed by \"x,z\".",
+  "zones": [
+    {
+      "id": "spawn",
+      "rect": { "minX": 0, "maxX": 3, "minZ": 0, "maxZ": 3 },
+      "settings": {
+        "takeDamage": false,
+        "pvp": false,
+        "spawnMobs": false
+      }
+    }
+  ],
+  "chunkOverrides": {
+    "1,1": {
+      "claimType": "COMMUNITY"
+    },
+    "2,2": {
+      "claimType": "PLAYER_OWNER",
+      "owner": "someplayer",
+      "playerOverrides": {
+        "someplayer": {
+          "canBuild": true,
+          "canMine": true,
+          "buildHeight": 10,
+          "digDepth": 10
+        }
+      }
+    }
+  }
+}
+

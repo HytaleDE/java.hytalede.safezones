@@ -1,0 +1,6 @@
+{
+  "_comment": "SafeZones zones. Zones are rectangles in chunk coordinates (x/z). chunkOverrides is a map keyed by \"x,z\".",
+  "zones": [],
+  "chunkOverrides": {}
+}
+

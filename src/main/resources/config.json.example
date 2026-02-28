@@ -1,0 +1,80 @@
+{
+  "_comment": "SafeZones config example. Player names are stored as lowercase.",
+  "roles": {
+    "admins": ["adminname"],
+    "mods": ["modname"],
+    "communityBuilders": ["buildername"]
+  },
+  "_comment_houseBlockedItemIds": "Blacklist: these item IDs cannot be placed in house cells (H). Empty = everything allowed.",
+  "houseBlockedItemIds": [],
+  "_comment_mobEnterWhitelistNpcTypeIds": "Whitelist: these NPC type ids (role names) may spawn in SafeZones and are not repelled by denyMobEnter. Example: [\"MobTeleporter\"]",
+  "mobEnterWhitelistNpcTypeIds": [],
+  "_comment_placeDistance": "Placement distance rules. Newly placed blocks/items listed here must be at least <distance> blocks away from the SafeZone outer border. Max distance is 4. Example: [{\"itemId\":\"*Workbenches_Crafting_Bench\",\"distance\":2}]",
+  "placeDistance": [],
+  "_comment_benchRadius": "Optional override for Hytale CraftingConfig bench container search. If unset/empty, server defaults apply. horizontal/vertical: 0..7, limit: 0..200.",
+  "benchRadius": {},
+  "_comment_claimLimits": "Claim limits. globalPerPlayer: max HOUSE-claims a player may own across all zones (0=unlimited). perZone: optional per-zone limits by zone id; global limit still applies.",
+  "claimLimits": {
+    "globalPerPlayer": 0,
+    "perZone": {}
+  },
+  "defaults": {
+    "pvp": false,
+    "takeDamage": false,
+    "allowProjectiles": false,
+    "allowExplosionDamage": false,
+    "spawnMobs": false,
+    "allowMobTargetPlayers": false,
+    "denyMobEnter": false,
+    "canBuild": false,
+    "canMine": false,
+    "groundY": 0,
+    "buildHeight": 24,
+    "digDepth": 12,
+    "allowInteract": false,
+    "allowContainers": false,
+    "allowUseEntities": false,
+    "allowItemDrop": true,
+    "allowItemPickup": true,
+    "preventFireSpread": true,
+    "denyLiquidFlow": true,
+    "denyPistons": true
+  },
+  "messages": {
+    "de": {
+      "noPermission": "Dazu hast du keine Berechtigung.",
+      "zoneCreated": "SafeZone erstellt.",
+      "zoneUpdated": "SafeZone aktualisiert.",
+      "zoneNotFound": "Hier ist keine SafeZone.",
+      "claimSet": "Chunk geclaimed.",
+      "claimCleared": "Claim entfernt.",
+      "trusted": "Spieler hat Rechte in diesem Chunk erhalten.",
+      "untrusted": "Spielerrechte in diesem Chunk entfernt.",
+      "zoneRemoved": "SafeZone entfernt.",
+      "zoneList": "Zonenliste.",
+      "actionDenied": "Aktion in SafeZone nicht erlaubt.",
+      "placeDistance": "Zu nah am Rand der SafeZone. Dieses Block-Item braucht mehr Abstand zur Außengrenze.",
+      "houseItemBlocked": "Dieses Item darfst du nicht in Häusern platzieren.",
+      "claimLimitGlobal": "Dieser Spieler hat das globale Claim-Limit erreicht.",
+      "claimLimitZone": "Dieser Spieler hat das Claim-Limit für diese SafeZone erreicht."
+    },
+    "en": {
+      "noPermission": "You don't have permission.",
+      "zoneCreated": "Safe zone created.",
+      "zoneUpdated": "Safe zone updated.",
+      "zoneNotFound": "No safe zone here.",
+      "claimSet": "Chunk claimed.",
+      "claimCleared": "Claim cleared.",
+      "trusted": "Player trusted in this chunk.",
+      "untrusted": "Player untrusted in this chunk.",
+      "zoneRemoved": "Safe zone removed.",
+      "zoneList": "Zone list.",
+      "actionDenied": "Action not allowed in safe zone.",
+      "placeDistance": "Too close to the SafeZone border. This block item requires more distance to the outer border.",
+      "houseItemBlocked": "You can't place that item in houses.",
+      "claimLimitGlobal": "That player has reached the global claim limit.",
+      "claimLimitZone": "That player has reached the claim limit for this SafeZone."
+    }
+  }
+}
+
