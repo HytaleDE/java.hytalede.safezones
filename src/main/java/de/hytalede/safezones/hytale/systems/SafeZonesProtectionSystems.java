@@ -104,6 +104,29 @@ public final class SafeZonesProtectionSystems {
 	private static final ConcurrentHashMap<UUID, Long> lastFluidBucketMessageMillis = new ConcurrentHashMap<>();
 	private static final long FLUID_BUCKET_MESSAGE_COOLDOWN_MS = 1500L;
 
+	// F-key (secondary) item pickup is handled by the interaction chain; InteractivelyPickupItemEvent.setCancelled is ignored.
+	// We cancel the chain before the interaction manager runs, and rate-limit deny messages.
+	private static final ConcurrentHashMap<UUID, Long> lastPickupDenyMessageMillis = new ConcurrentHashMap<>();
+	private static final long PICKUP_DENY_MESSAGE_COOLDOWN_MS = 1500L;
+
+	/** Block target extracted from {@link SyncInteractionChain} using protocol types (data.blockPosition, interactionData[0].blockFace). */
+	private static BlockTarget extractBlockTarget(SyncInteractionChain pkt) {
+		if (pkt == null || pkt.data == null) {
+			return null;
+		}
+		BlockPosition bp = pkt.data.blockPosition;
+		if (bp == null) {
+			return null;
+		}
+		com.hypixel.hytale.protocol.BlockFace protocolFace = null;
+		if (pkt.interactionData != null && pkt.interactionData.length > 0 && pkt.interactionData[0] != null) {
+			protocolFace = pkt.interactionData[0].blockFace;
+		}
+		return new BlockTarget(bp, protocolFace);
+	}
+
+	private record BlockTarget(BlockPosition blockPosition, com.hypixel.hytale.protocol.BlockFace protocolBlockFace) {}
+
 	public static void markPortalOrTeleporterInteract(UUID uuid) {
 		if (uuid == null) return;
 		recentPortalOrTeleporterInteractMillis.put(uuid, System.currentTimeMillis());
@@ -111,6 +134,7 @@ public final class SafeZonesProtectionSystems {
 
 	public static void register(SafeZonesHytalePlugin plugin) {
 		plugin.getEntityStoreRegistry().registerSystem(new FluidBucketInteractionPacketGuardSystem(plugin));
+		plugin.getEntityStoreRegistry().registerSystem(new PickupInteractionGuardSystem(plugin));
 		plugin.getEntityStoreRegistry().registerSystem(new BreakBlockProtectionSystem(plugin));
 		plugin.getEntityStoreRegistry().registerSystem(new PlaceBlockProtectionSystem(plugin));
 		plugin.getEntityStoreRegistry().registerSystem(new UseBlockProtectionSystem(plugin));
@@ -186,8 +210,8 @@ public final class SafeZonesProtectionSystems {
 					SyncInteractionChain pkt = it.next();
 					if (pkt == null) continue;
 
-					InteractionSyncDataWithTarget sync = extractTarget(pkt);
-					if (sync == null || sync.blockPos == null) {
+					BlockTarget sync = extractBlockTarget(pkt);
+					if (sync == null || sync.blockPosition() == null) {
 						continue;
 					}
 					// Avoid impacting unrelated chains like pure input/hotbar changes.
@@ -216,11 +240,11 @@ public final class SafeZonesProtectionSystems {
 					}
 
 					// Mimic PlaceFluidInteraction targeting: if the clicked block is solid, offset by clicked face.
-					Vector3i target = new Vector3i(sync.blockPos.x, sync.blockPos.y, sync.blockPos.z);
+					Vector3i target = new Vector3i(sync.blockPosition().x, sync.blockPosition().y, sync.blockPosition().z);
 					try {
 						BlockType bt = world.getBlockType(target);
 						if (FluidTicker.isSolid(bt)) {
-							BlockFace face = BlockFace.fromProtocolFace(sync.blockFace);
+							BlockFace face = BlockFace.fromProtocolFace(sync.protocolBlockFace());
 							if (face != null) {
 								target = target.clone();
 								target.add(face.getDirection());
@@ -268,7 +292,7 @@ public final class SafeZonesProtectionSystems {
 			}
 		}
 
-		private static boolean isPlaceFluidAction(SyncInteractionChain pkt, InteractionSyncDataWithTarget sync, String itemId, String hitDetail) {
+		private static boolean isPlaceFluidAction(SyncInteractionChain pkt, BlockTarget sync, String itemId, String hitDetail) {
 			try {
 				String detail = hitDetail != null ? hitDetail.toLowerCase(java.util.Locale.ROOT) : "";
 				// Most reliable: hitDetail includes PlaceFluid / FluidToPlace / Water_Source / Lava_Source.
@@ -277,40 +301,140 @@ public final class SafeZonesProtectionSystems {
 						return true;
 					}
 				}
-				// No reliable hitDetail → don't touch the interaction chain. This avoids breaking unrelated
-				// interactions (e.g. opening containers while holding a bucket).
+				// Fallback: some clients do not send hitDetail for bucket placement. If the player is holding
+				// a water/lava bucket and targeting a block with Secondary/Use, treat as place fluid so we
+				// can deny water in restricted areas.
+				if (sync != null && sync.blockPosition() != null && (isFluidWaterItemId(itemId) || isFluidLavaItemId(itemId))) {
+					return true;
+				}
 				return false;
 			} catch (Throwable ignored) {
 				return false;
 			}
 		}
+	}
 
-		private static InteractionSyncDataWithTarget extractTarget(SyncInteractionChain pkt) {
+	/**
+	 * F-key (secondary) item pickup is handled by the interaction chain; {@link InteractivelyPickupItemEvent} and
+	 * {@code event.setCancelled(true)} are ignored by the engine. This system runs before
+	 * {@link com.hypixel.hytale.server.core.entity.InteractionManager} and cancels pickup interaction chains when
+	 * the player is not allowed to modify the environment (same decision as block break: {@link ZoneActionType#BLOCK_BREAK}).
+	 * So if the player cannot mine in this cell (zone canMine, owner/trusted, height limits), they cannot pickup items from the ground.
+	 */
+	private static final class PickupInteractionGuardSystem extends com.hypixel.hytale.component.system.tick.EntityTickingSystem<EntityStore> {
+		private static final Query<EntityStore> QUERY = Query.and(
+				Player.getComponentType(),
+				PlayerRef.getComponentType(),
+				TransformComponent.getComponentType()
+		);
+		private static final Set<Dependency<EntityStore>> DEPENDENCIES = Set.of(
+				new SystemDependency<>(Order.BEFORE, InteractionSystems.TickInteractionManagerSystem.class)
+		);
+
+		private final SafeZonesHytalePlugin plugin;
+
+		private PickupInteractionGuardSystem(SafeZonesHytalePlugin plugin) {
+			this.plugin = plugin;
+		}
+
+		@Override
+		public Query<EntityStore> getQuery() {
+			return QUERY;
+		}
+
+		@Override
+		public Set<Dependency<EntityStore>> getDependencies() {
+			return DEPENDENCIES;
+		}
+
+		@Override
+		public void tick(float dt, int index, ArchetypeChunk<EntityStore> archetypeChunk, Store<EntityStore> store, CommandBuffer<EntityStore> commandBuffer) {
 			try {
-				BlockPosition bp = pkt.data != null ? pkt.data.blockPosition : null;
-				com.hypixel.hytale.protocol.BlockFace bf = com.hypixel.hytale.protocol.BlockFace.None;
+				PlayerRef pr = archetypeChunk.getComponent(index, PlayerRef.getComponentType());
+				Player player = archetypeChunk.getComponent(index, Player.getComponentType());
+				if (pr == null || player == null || pr.getUuid() == null) {
+					return;
+				}
 
-				if (pkt.interactionData != null) {
-					for (com.hypixel.hytale.protocol.InteractionSyncData d : pkt.interactionData) {
-						if (d == null) continue;
-						if (bp == null && d.blockPosition != null) {
-							bp = d.blockPosition;
-						}
-						if (d.blockFace != null) {
-							bf = d.blockFace;
+				if (!(pr.getPacketHandler() instanceof GamePacketHandler gph)) {
+					return;
+				}
+				Deque<SyncInteractionChain> q = gph.getInteractionPacketQueue();
+				if (q == null || q.isEmpty()) {
+					return;
+				}
+
+				SafeZonesSnapshot snapshot = plugin.getSnapshot();
+				if (snapshot == null || snapshot.zones().isEmpty()) {
+					return;
+				}
+
+				TransformComponent transform = archetypeChunk.getComponent(index, TransformComponent.getComponentType());
+				if (transform == null || transform.getPosition() == null) {
+					return;
+				}
+				Vector3d pos = transform.getPosition();
+				int bx = (int) Math.floor(pos.getX());
+				int by = (int) Math.floor(pos.getY());
+				int bz = (int) Math.floor(pos.getZ());
+				ChunkPos playerChunk = new ChunkPos(Math.floorDiv(bx, CELL_SIZE), Math.floorDiv(bz, CELL_SIZE));
+
+				boolean sentMessage = false;
+				java.util.Iterator<SyncInteractionChain> it = q.iterator();
+				while (it.hasNext()) {
+					SyncInteractionChain pkt = it.next();
+					if (pkt == null) continue;
+
+					InteractionType type = pkt.interactionType;
+					boolean isPickupInteraction = (type == InteractionType.Secondary || type == InteractionType.Use);
+					if (!isPickupInteraction) continue;
+
+					// Use the TARGET BLOCK's chunk when the packet has a block target (e.g. sickle on crop).
+					// Otherwise use player's chunk (e.g. F-pickup from ground). This way trusted can sickle-harvest
+					// in the claim even when standing in an adjacent chunk.
+					ChunkPos chunk = playerChunk;
+					Integer y = Integer.valueOf(by);
+					BlockTarget sync = extractBlockTarget(pkt);
+					if (sync != null && sync.blockPosition() != null) {
+						chunk = chunkFromBlock(new Vector3i(sync.blockPosition().x, sync.blockPosition().y, sync.blockPosition().z));
+						y = Integer.valueOf(sync.blockPosition().y);
+					}
+
+					// Same decision as block break: can they mine / modify the environment here?
+					Decision d = plugin.decidePlayerAction(player, ZoneActionType.BLOCK_BREAK, chunk, y);
+					// Fallback: owner or trusted (allowInteract) in a player-owned claim can harvest (e.g. sickle).
+					if (!d.allowed() && plugin.wouldOwnerOrTrustedAllowInteract(player, chunk)) {
+						d = Decision.allow();
+					}
+					if (d.allowed()) {
+						continue;
+					}
+
+					try {
+						gph.writeNoCache(new CancelInteractionChain(pkt.chainId, pkt.forkedId));
+					} catch (Throwable ignored) {
+					}
+					try {
+						it.remove();
+					} catch (Throwable ignored) {
+						try {
+							q.remove(pkt);
+						} catch (Throwable ignored2) {
 						}
 					}
-				}
-				if (bp == null) {
-					return null;
-				}
-				return new InteractionSyncDataWithTarget(bp, bf);
-			} catch (Throwable ignored) {
-				return null;
-			}
-		}
 
-		private record InteractionSyncDataWithTarget(BlockPosition blockPos, com.hypixel.hytale.protocol.BlockFace blockFace) {
+					if (!sentMessage) {
+						long now = System.currentTimeMillis();
+						Long last = lastPickupDenyMessageMillis.get(pr.getUuid());
+						if (last == null || now - last > PICKUP_DENY_MESSAGE_COOLDOWN_MS) {
+							lastPickupDenyMessageMillis.put(pr.getUuid(), now);
+							plugin.denyWithMessage(player, d, pr.getLanguage());
+						}
+						sentMessage = true;
+					}
+				}
+			} catch (Throwable ignored) {
+			}
 		}
 	}
 
@@ -1158,11 +1282,54 @@ public final class SafeZonesProtectionSystems {
 			} catch (Throwable ignored) {
 			}
 
-			Decision d = plugin.decidePlayerAction(player, ZoneActionType.INTERACT, chunk, null);
+			// Sickle-on-crop (and similar harvest) removes yield from the world; use canMine (BLOCK_BREAK), not INTERACT.
+			boolean harvestLike = isHarvestLikeUse(event, player);
+			Decision d;
+			if (harvestLike) {
+				// Pass null for Y so only canMine is checked, not dig depth. Harvest use is surface-level; depth limit applies to actual block break.
+				d = plugin.decidePlayerAction(player, ZoneActionType.BLOCK_BREAK, chunk, null);
+				// Fallback: owner or trusted (allowInteract) in a player-owned claim can harvest even if BLOCK_BREAK denied.
+				if (!d.allowed() && plugin.wouldOwnerOrTrustedAllowInteract(player, chunk)) {
+					d = Decision.allow();
+				}
+			} else {
+				d = plugin.decidePlayerAction(player, ZoneActionType.INTERACT, chunk, null);
+			}
 			if (!d.allowed()) {
 				event.setCancelled(true);
 				plugin.denyWithMessage(player, d, languageTag(archetypeChunk, index));
 			}
+		}
+	}
+
+	/**
+	 * Heuristic: interaction that harvests/destroys block yield (e.g. sickle on crops) should be gated by canMine.
+	 * Detect by item-in-hand (sickle-like) and/or block type (crop/plant-like). Based on common Hytale asset naming.
+	 */
+	private static boolean isHarvestLikeUse(UseBlockEvent.Pre event, Player player) {
+		try {
+			String itemId = null;
+			if (player != null) {
+				var inv = player.getInventory();
+				ItemStack inHand = inv != null ? inv.getItemInHand() : null;
+				if (inHand != null && !inHand.isEmpty()) {
+					itemId = inHand.getItemId();
+				}
+			}
+			String blockId = null;
+			BlockType bt = event != null ? event.getBlockType() : null;
+			if (bt != null && bt.getId() != null) {
+				blockId = bt.getId();
+			}
+			String i = itemId != null ? itemId.toLowerCase(java.util.Locale.ROOT) : "";
+			String b = blockId != null ? blockId.toLowerCase(java.util.Locale.ROOT) : "";
+			boolean sickleLike = i.contains("sickle") || i.contains("scythe") || i.contains("harvest");
+			boolean cropLike = b.contains("crop") || b.contains("plant") || b.contains("wheat") || b.contains("carrot")
+					|| b.contains("potato") || b.contains("berry") || b.contains("stalk") || b.contains("stem")
+					|| b.contains("gourd") || b.contains("reed") || (b.contains("flower") && !b.contains("flowerpot"));
+			return sickleLike || cropLike;
+		} catch (Throwable ignored) {
+			return false;
 		}
 	}
 
@@ -1656,9 +1823,11 @@ public final class SafeZonesProtectionSystems {
 			}
 			Vector3d pos = transform.getPosition();
 			int bx = (int) Math.floor(pos.getX());
+			int by = (int) Math.floor(pos.getY());
 			int bz = (int) Math.floor(pos.getZ());
 			ChunkPos chunk = new ChunkPos(Math.floorDiv(bx, CELL_SIZE), Math.floorDiv(bz, CELL_SIZE));
-			Decision d = plugin.decidePlayerAction(player, ZoneActionType.ITEM_PICKUP, chunk, null);
+			// Same decision as block break: can they mine / modify the environment here?
+			Decision d = plugin.decidePlayerAction(player, ZoneActionType.BLOCK_BREAK, chunk, Integer.valueOf(by));
 			if (!d.allowed()) {
 				event.setCancelled(true);
 				plugin.denyWithMessage(player, d, languageTag(archetypeChunk, index));

@@ -18,6 +18,7 @@
     "globalPerPlayer": 0,
     "perZone": {}
   },
+  "_comment_defaults_build_mine": "canBuild/canMine control block place and break; F-key pickup from ground uses the same decision as break (canMine). allowItemPickup is for picking up dropped items. Reload or restart after changes.",
   "defaults": {
     "pvp": false,
     "takeDamage": false,

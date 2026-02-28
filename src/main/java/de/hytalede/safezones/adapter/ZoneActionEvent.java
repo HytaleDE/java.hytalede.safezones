@@ -6,13 +6,12 @@ import de.hytalede.safezones.core.ZoneActionRequest;
 /**
  * Adapter contract: wrap a platform/server event into an engine request that can be allowed/denied.
  *
- * <p>The platform implementation typically:\n
+ * <p>The platform implementation typically:
  * <ul>
  *   <li>Builds a {@link ZoneActionRequest} from event details (actor, chunk, y, etc.)</li>
  *   <li>Calls the handler</li>
  *   <li>If denied, cancels the underlying event / clears targets / blocks physics</li>
  * </ul>
- * </p>
  */
 public interface ZoneActionEvent {
 	ZoneActionRequest request();

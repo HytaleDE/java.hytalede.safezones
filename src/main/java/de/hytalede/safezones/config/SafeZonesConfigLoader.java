@@ -152,6 +152,7 @@ public final class SafeZonesConfigLoader {
 		defaults.put("canBuild", config.defaults().canBuild());
 		defaults.put("canMine", config.defaults().canMine());
 		defaults.put("groundY", config.defaults().groundY());
+		defaults.put("uniformGroundY", config.defaults().uniformGroundY());
 		defaults.put("buildHeight", config.defaults().buildHeight());
 		defaults.put("digDepth", config.defaults().digDepth());
 		defaults.put("allowInteract", config.defaults().allowInteract());
@@ -279,6 +280,7 @@ public final class SafeZonesConfigLoader {
 				JsonUtil.getBooleanBoxed(map, "canBuild"),
 				JsonUtil.getBooleanBoxed(map, "canMine"),
 				JsonUtil.getIntBoxed(map, "groundY"),
+				JsonUtil.getIntBoxed(map, "uniformGroundY"),
 				JsonUtil.getIntBoxed(map, "buildHeight"),
 				JsonUtil.getIntBoxed(map, "digDepth"),
 				JsonUtil.getBooleanBoxed(map, "allowInteract"),

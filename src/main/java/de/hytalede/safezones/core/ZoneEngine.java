@@ -149,6 +149,10 @@ public final class ZoneEngine {
 	}
 
 	private static int effectiveGroundY(SafeZonesSnapshot snapshot, ZoneActionRequest request, ZoneSettings settings) {
+		// Uniform mode: zone-wide Y for all claims (null/0 = dynamic per-claim groundY).
+		if (settings.uniformGroundY() != 0) {
+			return settings.uniformGroundY();
+		}
 		ChunkOverride ov = snapshot.chunkOverrides().get(request.chunk());
 		if (ov != null && ov.groundY() != null) {
 			return ov.groundY();
@@ -227,6 +231,25 @@ public final class ZoneEngine {
 		return allowed ? Decision.allow() : Decision.deny(denyReason);
 	}
 
+	/**
+	 * Returns true if the chunk is a player-owned claim and the actor is the owner or has a trusted override with allowInteract.
+	 * Used as a fallback for harvest-like block use when BLOCK_BREAK denies (e.g. so trusted players can harvest without canMine in override).
+	 */
+	public boolean wouldOwnerOrTrustedAllowInteractInClaim(SafeZonesSnapshot snapshot, ChunkPos chunk, String actorLower) {
+		if (snapshot == null || chunk == null || actorLower == null || actorLower.isBlank()) {
+			return false;
+		}
+		ChunkOverride ov = snapshot.chunkOverrideOrNone(chunk);
+		if (ov.claimType() != ClaimType.PLAYER_OWNER) {
+			return false;
+		}
+		if (ov.owner() != null && actorLower.equalsIgnoreCase(ov.owner())) {
+			return true;
+		}
+		PermissionOverride po = findPlayerOverrideIgnoreCase(ov.playerOverrides(), actorLower);
+		return po != null && Boolean.TRUE.equals(po.allowInteract());
+	}
+
 	private static PermissionOverride findPlayerOverrideIgnoreCase(Map<String, PermissionOverride> overrides, String actorLowerOrRaw) {
 		if (overrides == null || overrides.isEmpty() || actorLowerOrRaw == null) {
 			return null;
@@ -260,12 +283,19 @@ public final class ZoneEngine {
 			base = base.withCanBuild(true).withCanMine(true);
 		}
 
-		// Per-player override
+		// Per-player override (trusted get same flags; build/dig limits come from zone below).
 		if (actor != null) {
 			PermissionOverride po = findPlayerOverrideIgnoreCase(override.playerOverrides(), actor);
 			if (po != null) {
 				base = base.apply(po);
 			}
+		}
+
+		// In player-owned claims, owner and trusted use zone buildHeight/digDepth so they match (no hardcoded overrides).
+		boolean isOwnerOrTrusted = actor != null
+				&& (actor.equalsIgnoreCase(override.owner()) || findPlayerOverrideIgnoreCase(override.playerOverrides(), actor) != null);
+		if (override.claimType() == ClaimType.PLAYER_OWNER && isOwnerOrTrusted) {
+			base = base.withBuildHeight(settings.buildHeight()).withDigDepth(settings.digDepth());
 		}
 
 		// Admin/Mod: allow all actions (including unlimited height).

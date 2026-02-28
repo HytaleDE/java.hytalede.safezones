@@ -15,9 +15,9 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * /safezone mob list
- * /safezone mob allow <NPC_TYPE_ID>
- * /safezone mob block <NPC_TYPE_ID>
+ * {@code /safezone mob list}
+ * {@code /safezone mob allow <NPC_TYPE_ID>}
+ * {@code /safezone mob block <NPC_TYPE_ID>}
  *
  * <p>Manages the global mob-enter whitelist (NPC type ids) used by SafeZones.</p>
  */

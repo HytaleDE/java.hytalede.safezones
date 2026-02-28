@@ -6,7 +6,7 @@
 
   <groupId>de.hytalede</groupId>
   <artifactId>safezones</artifactId>
-  <version>0.7.3</version>
+  <version>0.7.4</version>
   <name>HytaleDE SafeZones Plugin</name>
   <description>Chunk-based safe zones / region protection (Hytale server plugin adapter).</description>
 
@@ -34,7 +34,7 @@
       <artifactId>HytaleServer-parent</artifactId>
       <version>${hytale.server.version}</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/../@HytaleServer/HytaleServer.jar</systemPath>
+      <systemPath>${project.basedir}/../testserver/Server/HytaleServer.jar</systemPath>
     </dependency>
 
     <dependency>

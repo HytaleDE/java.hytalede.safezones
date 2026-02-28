@@ -3,12 +3,15 @@ package de.hytalede.safezones.storage;
 import de.hytalede.safezones.config.SafeZonesConfig;
 import de.hytalede.safezones.core.ChunkOverride;
 import de.hytalede.safezones.core.ChunkPos;
+import de.hytalede.safezones.core.ClaimType;
+import de.hytalede.safezones.core.PermissionOverride;
 import de.hytalede.safezones.core.SafeZone;
 import de.hytalede.safezones.core.SafeZonesSnapshot;
 import de.hytalede.safezones.core.ZoneSettings;
 import de.hytalede.safezones.core.ZoneSettingsPatch;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -44,7 +47,48 @@ public final class SafeZonesRepository {
 				.comparingInt((SafeZone z) -> z.rect().areaChunks())
 				.thenComparing(SafeZone::id, String.CASE_INSENSITIVE_ORDER));
 
-		return new SafeZonesSnapshot(zones, data.chunkOverrides());
+		SafeZonesSnapshot snapshot = new SafeZonesSnapshot(zones, data.chunkOverrides());
+		SafeZonesSnapshot migrated = migrateClaimHeightsAndOverrides(snapshot);
+		if (!migrated.chunkOverrides().equals(snapshot.chunkOverrides())) {
+			saveSnapshot(migrated);
+			return migrated;
+		}
+		return snapshot;
+	}
+
+	/**
+	 * Migration: align all claim buildHeight/digDepth with zone defaults (owner and trusted),
+	 * and set claim groundY to zone uniformGroundY when zone has uniform mode (uniformGroundY != 0).
+	 */
+	private static SafeZonesSnapshot migrateClaimHeightsAndOverrides(SafeZonesSnapshot snapshot) {
+		Map<ChunkPos, ChunkOverride> out = new LinkedHashMap<>();
+		for (Map.Entry<ChunkPos, ChunkOverride> e : snapshot.chunkOverrides().entrySet()) {
+			ChunkPos chunk = e.getKey();
+			ChunkOverride ov = e.getValue();
+			Optional<SafeZone> zoneOpt = snapshot.findZoneFor(chunk);
+			boolean isClaimOrTrusted = ov.claimType() == ClaimType.PLAYER_OWNER
+					|| (ov.playerOverrides() != null && !ov.playerOverrides().isEmpty());
+			if (zoneOpt.isEmpty() || !isClaimOrTrusted) {
+				out.put(chunk, ov);
+				continue;
+			}
+			ZoneSettings zoneSettings = zoneOpt.get().settings();
+			Integer newGroundY = ov.groundY();
+			if (zoneSettings.uniformGroundY() != 0) {
+				newGroundY = zoneSettings.uniformGroundY();
+			}
+			Map<String, PermissionOverride> newPo = new LinkedHashMap<>();
+			for (Map.Entry<String, PermissionOverride> pe : ov.playerOverrides().entrySet()) {
+				PermissionOverride po = pe.getValue();
+				// Clear buildHeight/digDepth so zone defaults apply (owner and trusted match).
+				newPo.put(pe.getKey(), new PermissionOverride(
+						po.canBuild(), po.canMine(), null, null,
+						po.allowInteract(), po.allowContainers(), po.allowUseEntities(),
+						po.allowItemDrop(), po.allowItemPickup()));
+			}
+			out.put(chunk, new ChunkOverride(ov.type(), ov.claimType(), ov.owner(), newGroundY, newPo));
+		}
+		return new SafeZonesSnapshot(snapshot.zones(), out);
 	}
 
 	public void saveSnapshot(SafeZonesSnapshot snapshot) throws IOException {

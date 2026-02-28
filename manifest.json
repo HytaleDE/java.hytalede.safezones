@@ -1,7 +1,7 @@
 {
   "Group": "HytaleDE",
   "Name": "SafeZones",
-  "Version": "0.7.3",
+  "Version": "0.7.4",
   "Description": "Chunk-based SafeZones / region protection (Hytale server plugin adapter).",
   "Authors": [
     {
@@ -12,4 +12,3 @@
   "Main": "de.hytalede.safezones.hytale.SafeZonesHytalePlugin",
   "ServerVersion": "2026.02.17-255364b8e"
 }
-

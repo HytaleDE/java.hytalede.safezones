@@ -274,6 +274,7 @@ public final class ZonesJsonStorage {
 				getBooleanBoxed(map, "canBuild"),
 				getBooleanBoxed(map, "canMine"),
 				getIntBoxed(map, "groundY"),
+				getIntBoxed(map, "uniformGroundY"),
 				getIntBoxed(map, "buildHeight"),
 				getIntBoxed(map, "digDepth"),
 				getBooleanBoxed(map, "allowInteract"),
@@ -313,6 +314,7 @@ public final class ZonesJsonStorage {
 		putIfNonNull(out, "canBuild", patch.canBuild());
 		putIfNonNull(out, "canMine", patch.canMine());
 		putIfNonNull(out, "groundY", patch.groundY());
+		putIfNonNull(out, "uniformGroundY", patch.uniformGroundY());
 		putIfNonNull(out, "buildHeight", patch.buildHeight());
 		putIfNonNull(out, "digDepth", patch.digDepth());
 		putIfNonNull(out, "allowInteract", patch.allowInteract());

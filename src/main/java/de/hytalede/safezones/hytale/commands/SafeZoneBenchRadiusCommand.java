@@ -15,9 +15,9 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * /safezone benchradius <horizontal:0-7> <vertical:0-7> [limit:0-200]
+ * {@code /safezone benchradius <horizontal:0-7> <vertical:0-7> [limit:0-200]}
  *
- * Changes the crafting bench "nearby container" search radius at runtime by mutating the loaded GameplayConfig.
+ * <p>Changes the crafting bench "nearby container" search radius at runtime by mutating the loaded GameplayConfig.</p>
  */
 public final class SafeZoneBenchRadiusCommand extends CommandBase {
 	private final SafeZonesHytalePlugin plugin;

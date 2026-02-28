@@ -14,6 +14,8 @@ public record ZoneSettingsPatch(
 		Boolean canBuild,
 		Boolean canMine,
 		Integer groundY,
+		/** If non-null and non-zero, use this Y for all claims in the zone. null/0 = dynamic. */
+		Integer uniformGroundY,
 		Integer buildHeight,
 		Integer digDepth,
 		Boolean allowInteract,
@@ -40,6 +42,7 @@ public record ZoneSettingsPatch(
 				canBuild != null ? canBuild : base.canBuild(),
 				canMine != null ? canMine : base.canMine(),
 				groundY != null ? groundY : base.groundY(),
+				uniformGroundY != null ? uniformGroundY : base.uniformGroundY(),
 				buildHeight != null ? buildHeight : base.buildHeight(),
 				digDepth != null ? digDepth : base.digDepth(),
 				allowInteract != null ? allowInteract : base.allowInteract(),

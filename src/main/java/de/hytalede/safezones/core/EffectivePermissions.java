@@ -53,6 +53,14 @@ public record EffectivePermissions(
 		return new EffectivePermissions(canBuild, value, buildHeight, digDepth, allowInteract, allowContainers, allowUseEntities, allowItemDrop, allowItemPickup, unlimitedHeight);
 	}
 
+	public EffectivePermissions withBuildHeight(int value) {
+		return new EffectivePermissions(canBuild, canMine, value, digDepth, allowInteract, allowContainers, allowUseEntities, allowItemDrop, allowItemPickup, unlimitedHeight);
+	}
+
+	public EffectivePermissions withDigDepth(int value) {
+		return new EffectivePermissions(canBuild, canMine, buildHeight, value, allowInteract, allowContainers, allowUseEntities, allowItemDrop, allowItemPickup, unlimitedHeight);
+	}
+
 	public EffectivePermissions apply(PermissionOverride po) {
 		boolean newCanBuild = po.canBuild() != null ? po.canBuild() : canBuild;
 		boolean newCanMine = po.canMine() != null ? po.canMine() : canMine;

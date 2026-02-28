@@ -13,8 +13,8 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * /safezone item block <ITEM_ID>
- * /safezone item allow <ITEM_ID>
+ * {@code /safezone item block <ITEM_ID>}
+ * {@code /safezone item allow <ITEM_ID>}
  *
  * <p>Manages a blacklist of items that cannot be placed inside house cells (H).</p>
  */

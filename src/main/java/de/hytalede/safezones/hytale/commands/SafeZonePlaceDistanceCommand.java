@@ -13,10 +13,10 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * /safezone placeDistance <ITEM_ID> <DISTANCE_IN_BLOCKS>
+ * {@code /safezone placeDistance <ITEM_ID> <DISTANCE_IN_BLOCKS>}
  *
- * Adds/updates a placement distance rule for a specific placeable item/block.
- * Distance is clamped to [0..4]. A value of 0 removes the rule.
+ * <p>Adds/updates a placement distance rule for a specific placeable item/block.
+ * Distance is clamped to [0..4]. A value of 0 removes the rule.</p>
  */
 public final class SafeZonePlaceDistanceCommand extends CommandBase {
 	private final SafeZonesHytalePlugin plugin;

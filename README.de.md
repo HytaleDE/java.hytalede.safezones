@@ -50,6 +50,22 @@ Beispiel-Dateien:
 - `src/main/resources/config.json.example` (Rollen, Defaults, Messages)
 - `src/main/resources/zones.json.example` (Zonen und Chunk-Overrides)
 
+## Protection (Hytale-Adapter)
+
+Der Hytale-Plugin-Adapter setzt Zonen-Regeln per ECS-Systemen und Packet-Guards durch:
+
+- **Block abbauen/setzen**: `BreakBlockEvent`, `PlaceBlockEvent`; Build/Mine und Höhen-/Tiefenlimits gelten.
+- **Block nutzen (Interact)**: `UseBlockEvent.Pre` — UIs öffnen, Türen usw.; in Player-Owner-Chunks eingeschränkt (Owner/Trusted mit allowInteract).
+- **Ernte (Sichel auf Pflanzen)**: Wird wie Mine behandelt; erfordert **canMine** (oder Owner/Trusted im Claim). Tiefenlimit gilt nicht für Ernte-Use, damit Trusted mit der Sichel ernten können.
+- **F-Pickup / Flüssigkeit-Eimer**: Interaktions-Ketten werden vor dem Interaction Manager abgebrochen, wenn der Spieler in der Zelle nicht minen bzw. Flüssigkeit setzen darf.
+
+## Changelog
+
+### 0.8.0
+
+- **Ernte (Sichel auf Pflanzen)**: Block-Use, der erntet (Sichel/Pflanzen-Heuristik), wird über **canMine** gesteuert; Owner und Trusted können ernten (Fallback, wenn BLOCK_BREAK verweigert). Für Ernte-Use wird kein Tiefenlimit angewendet (Y = null).
+- **Fluid-Eimer / F-Pickup Guards**: World-Thread-Absturz behoben durch Verwendung der echten Hytale-Protokolltypen: `SyncInteractionChain.data` (`InteractionChainData`), `BlockPosition`, Protokoll-`BlockFace`; `BlockTarget`-Record und `extractBlockTarget()` ergänzt (keine nicht existierenden Typen/Methoden mehr).
+
 ## Build
 
 Benötigt **Eclipse Adoptium Temurin JDK 25** (Maven muss auf Java 25 laufen wegen `--release 25`).

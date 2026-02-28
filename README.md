@@ -47,6 +47,22 @@ Example files:
 - `src/main/resources/config.json.example` (roles, defaults, messages)
 - `src/main/resources/zones.json.example` (zones and chunk overrides)
 
+## Protection (Hytale adapter)
+
+The Hytale plugin adapter enforces zone rules via ECS systems and packet guards:
+
+- **Block break/place**: `BreakBlockEvent`, `PlaceBlockEvent`; build/mine and height/depth limits apply.
+- **Block use (interact)**: `UseBlockEvent.Pre` — opening UIs, doors, etc. Restricted in player-owned claims (owner/trusted with allowInteract).
+- **Harvest (sickle on crops)**: Treated as mine-like; requires **canMine** (or owner/trusted in that claim). Dig depth is not applied to harvest use so trusted players can sickle-harvest.
+- **F-key pickup / fluid bucket**: Interaction chains are cancelled before the interaction manager when the player may not mine or place fluid in that cell.
+
+## Changelog
+
+### 0.8.0
+
+- **Harvest (sickle on crops)**: Block use that harvests (sickle/crop heuristic) is gated by **canMine**; owner and trusted can harvest (fallback when BLOCK_BREAK denies). Harvest use does not apply dig-depth limit (Y passed as null).
+- **Fluid bucket / F-pickup guards**: Fixed world-thread crash by using real Hytale protocol types: `SyncInteractionChain.data` (`InteractionChainData`), `BlockPosition`, protocol `BlockFace`; added `BlockTarget` record and `extractBlockTarget()` (no non-existent types/methods).
+
 ## Build
 
 Requires **Eclipse Adoptium Temurin JDK 25** (Maven must run on Java 25 for `--release 25`).

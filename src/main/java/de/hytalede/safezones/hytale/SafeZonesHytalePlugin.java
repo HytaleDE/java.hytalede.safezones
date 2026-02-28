@@ -77,14 +77,13 @@ import java.util.logging.Level;
 /**
  * Hytale runtime adapter for the SafeZones core.
  *
- * <p>This plugin:\n
+ * <p>This plugin:
  * <ul>
  *   <li>Loads {@code config.json} + {@code zones.json} from the plugin data directory</li>
  *   <li>Caches an in-memory {@link SafeZonesSnapshot} for fast event decisions</li>
  *   <li>Registers basic protection hooks (break/place/use/drop/pickup)</li>
  *   <li>Exposes {@code /safezone ...} (delegating to core {@link SafeZoneCommands})</li>
  * </ul>
- * </p>
  */
 public final class SafeZonesHytalePlugin extends JavaPlugin {
 	private static final String DEFAULT_CONFIG_RESOURCE = "/config.json";
@@ -843,6 +842,24 @@ public final class SafeZonesHytalePlugin extends JavaPlugin {
 		Role role = roleForPlayer(player, cfg, actorLower);
 		ZoneActionRequest request = ZoneActionRequest.playerAction(type, actorLower, role, chunk, y);
 		return e.decide(getSnapshot(), request);
+	}
+
+	/**
+	 * True if the chunk is a player-owned claim and the player is the owner or trusted with allowInteract.
+	 * Used so harvest-like block use (e.g. sickle on crops) is allowed for owner/trusted even when BLOCK_BREAK would deny.
+	 */
+	public boolean wouldOwnerOrTrustedAllowInteract(Player player, ChunkPos chunk) {
+		ZoneEngine e = this.engine;
+		SafeZonesSnapshot snapshot = getSnapshot();
+		if (e == null || snapshot == null) {
+			return false;
+		}
+		String username = player != null ? player.getDisplayName() : null;
+		if (username == null || username.isBlank()) {
+			return false;
+		}
+		String actorLower = PlayerNames.normalize(username);
+		return e.wouldOwnerOrTrustedAllowInteractInClaim(snapshot, chunk, actorLower);
 	}
 
 	/**

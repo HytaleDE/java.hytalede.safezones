@@ -24,6 +24,7 @@ final class ZoneSettingsDiff {
 				effective.canBuild() != defaults.canBuild() ? effective.canBuild() : null,
 				effective.canMine() != defaults.canMine() ? effective.canMine() : null,
 				effective.groundY() != defaults.groundY() ? effective.groundY() : null,
+				effective.uniformGroundY() != defaults.uniformGroundY() ? effective.uniformGroundY() : null,
 				effective.buildHeight() != defaults.buildHeight() ? effective.buildHeight() : null,
 				effective.digDepth() != defaults.digDepth() ? effective.digDepth() : null,
 				effective.allowInteract() != defaults.allowInteract() ? effective.allowInteract() : null,

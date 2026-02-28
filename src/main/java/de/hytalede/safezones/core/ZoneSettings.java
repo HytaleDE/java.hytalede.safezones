@@ -16,6 +16,8 @@ public record ZoneSettings(
 		boolean canBuild,
 		boolean canMine,
 		int groundY,
+		/** If non-zero, use this Y as ground reference for all claims in the zone (uniform mode). 0 = dynamic (per-claim groundY). */
+		int uniformGroundY,
 		int buildHeight,
 		int digDepth,
 		boolean allowInteract,
@@ -34,6 +36,9 @@ public record ZoneSettings(
 		if (digDepth < 0) {
 			throw new IllegalArgumentException("digDepth must be >= 0");
 		}
+		if (uniformGroundY < 0) {
+			throw new IllegalArgumentException("uniformGroundY must be >= 0");
+		}
 	}
 
 	public static ZoneSettings defaults() {
@@ -48,6 +53,7 @@ public record ZoneSettings(
 				false,
 				false,
 				0,
+				0, // 0 = dynamic (per-claim groundY)
 				24,
 				12,
 				false,

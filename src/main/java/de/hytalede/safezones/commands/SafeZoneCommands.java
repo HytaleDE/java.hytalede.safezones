@@ -287,10 +287,8 @@ public final class SafeZoneCommands {
 		}
 
 		Map<String, PermissionOverride> po = new LinkedHashMap<>(existing.playerOverrides());
-		// Claim implies the owner can build/mine with per-lot height limits:
-		// 12 blocks down, 24 blocks up relative to the claimed lot's ground reference.
-		// Also: owner can interact/use containers/use entities in their claim.
-		po.put(playerLower, new PermissionOverride(true, true, 24, 12, true, true, true, null, null));
+		// Owner gets build/mine/interact from zone defaults (buildHeight/digDepth from zone, not hardcoded).
+		po.put(playerLower, new PermissionOverride(true, true, null, null, true, true, true, null, null));
 
 		Integer groundY = ctx.currentY();
 		ChunkOverride updated = new ChunkOverride(existing.type(), ClaimType.PLAYER_OWNER, playerLower, groundY, po);
@@ -522,26 +520,27 @@ public final class SafeZoneCommands {
 
 	private ZoneSettingsPatch patchForSingleSetting(String key, String value) {
 		return switch (key.toLowerCase(Locale.ROOT)) {
-			case "pvp" -> new ZoneSettingsPatch(parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-			case "takedamage" -> new ZoneSettingsPatch(null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-			case "allowprojectiles" -> new ZoneSettingsPatch(null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-			case "allowexplosiondamage" -> new ZoneSettingsPatch(null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-			case "spawnmobs" -> new ZoneSettingsPatch(null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-			case "allowmobtargetplayers" -> new ZoneSettingsPatch(null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-			case "denymobenter" -> new ZoneSettingsPatch(null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null);
-			case "canbuild" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null);
-			case "canmine" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null);
-			case "ground", "groundy" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, parseInt(value), null, null, null, null, null, null, null, null, null, null);
-			case "buildheight" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, parseInt(value), null, null, null, null, null, null, null, null, null);
-			case "digdepth" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, parseInt(value), null, null, null, null, null, null, null, null);
-			case "allowinteract" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null);
-			case "allowcontainers" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null);
-			case "allowuseentities" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null);
-			case "allowitemdrop" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null);
-			case "allowitempickup" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null);
-			case "preventfirespread" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null);
-			case "denyliquidflow" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null);
-			case "denypistons" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value));
+			case "pvp" -> new ZoneSettingsPatch(parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+			case "takedamage" -> new ZoneSettingsPatch(null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+			case "allowprojectiles" -> new ZoneSettingsPatch(null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+			case "allowexplosiondamage" -> new ZoneSettingsPatch(null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+			case "spawnmobs" -> new ZoneSettingsPatch(null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+			case "allowmobtargetplayers" -> new ZoneSettingsPatch(null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+			case "denymobenter" -> new ZoneSettingsPatch(null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+			case "canbuild" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null, null);
+			case "canmine" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null, null, null, null, null, null);
+			case "ground", "groundy" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, parseInt(value), null, null, null, null, null, null, null, null, null, null, null);
+			case "uniformgroundy", "uniformground" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, parseInt(value), null, null, null, null, null, null, null, null, null, null);
+			case "buildheight" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, parseInt(value), null, null, null, null, null, null, null, null, null);
+			case "digdepth" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, parseInt(value), null, null, null, null, null, null, null, null);
+			case "allowinteract" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null, null);
+			case "allowcontainers" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null, null);
+			case "allowuseentities" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null, null);
+			case "allowitemdrop" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null, null);
+			case "allowitempickup" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null, null);
+			case "preventfirespread" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null, null);
+			case "denyliquidflow" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value), null);
+			case "denypistons" -> new ZoneSettingsPatch(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, parseBool(value));
 			default -> throw new IllegalArgumentException("Unknown setting: " + key);
 		};
 	}
